@@ -12,58 +12,60 @@ const { getCoverImagePathFromBuffer } = require('../utils/html')
 
 const infuraUrl = 'https://ipfs.infura.io:5001'
 const apiKey = process.env.REACT_APP_IPFS_KEY
+
 const storage = new NFTStorage({ token: apiKey })
 
 // const useNFTStorage = true
 
-export const prepareFile100MB = async ({
-  name,
-  description,
-  tags,
-  address,
-  buffer,
-  mimeType,
-  cover,
-  thumbnail,
-  generateDisplayUri,
-  file
-}) => {
+// export const prepareFile100MB = async ({
+//   name,
+//   description,
+//   tags,
+//   address,
+//   buffer,
+//   mimeType,
+//   cover,
+//   thumbnail,
+//   generateDisplayUri,
+//   file
+// }) => {
 
-  const ipfs = create(infuraUrl)
+//   const ipfs = create(infuraUrl)
 
-  let formData = new FormData()
-  formData.append('file', file)
+//   let formData = new FormData()
+//   formData.append('file', file)
 
-  let info = await axios.post('https://hesychasm.herokuapp.com/post_file', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(res => res.data)
-  const hash = info.path
-  const cid = `ipfs://${hash}`
+//   let info = await axios.post('https://hesychasm.herokuapp.com/post_file', formData, {
+//     headers: { 'Content-Type': 'multipart/form-data' }
+//   }).then(res => res.data)
+//   const hash = info.path
+//   const cid = `ipfs://${hash}`
 
-  // upload cover image
-  const displayUri = await uploadCoverImage({ generateDisplayUri })
+//   // upload cover image
+//   const displayUri = await uploadCoverImage({ generateDisplayUri })
 
-  // upload thumbnail image
-  let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
-  // @crzypatch works wants the thumbnailUri to be the black circle
-  // if (generateDisplayUri) {
-  //   const thumbnailInfo = await ipfs.add(thumbnail.buffer)
-  //   const thumbnailHash = thumbnailInfo.path
-  //   thumbnailUri = `ipfs://${thumbnailHash}`
-  // }
+//   // upload thumbnail image
+//   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
+//   // @crzypatch works wants the thumbnailUri to be the black circle
+//   // if (generateDisplayUri) {
+//   //   const thumbnailInfo = await ipfs.add(thumbnail.buffer)
+//   //   const thumbnailHash = thumbnailInfo.path
+//   //   thumbnailUri = `ipfs://${thumbnailHash}`
+//   // }
 
-  return await uploadMetadataFile({
-    name,
-    description,
-    tags,
-    cid,
-    address,
-    mimeType,
-    displayUri,
-    thumbnailUri,
-  })
-}
+//   return await uploadMetadataFile({
+//     name,
+//     description,
+//     tags,
+//     cid,
+//     address,
+//     mimeType,
+//     displayUri,
+//     thumbnailUri,
+//   })
+// }
 const uploadCoverImage = async ({
+  cover,
   generateDisplayUri,
   hashes = undefined
 }) => {
@@ -110,7 +112,7 @@ export const prepareFile = async ({
   // const cid = `ipfs://${hash.path}`
   const cid = `ipfs://${hash}`
 
-  const displayUri = await uploadCoverImage({ generateDisplayUri })
+  const displayUri = await uploadCoverImage({ cover,generateDisplayUri })
 
   // upload thumbnail image
   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
@@ -144,13 +146,12 @@ export const prepareDirectory = async ({
   generateDisplayUri,
 }) => {
   // upload directory of files
-  const hashes = await uploadFilesToDirectory(files)
+  // const hashes = await uploadFilesToDirectory(files)
+  const hashes = await uploadFilesToDirectoryNFTStorage(files)
   const cid = `ipfs://${hashes.directory}`
 
   // upload cover image
-  const ipfs = create(infuraUrl)
-
-  const displayUri = await uploadCoverImage({ generateDisplayUri, hashes })
+  const displayUri = await uploadCoverImage({ cover,generateDisplayUri, hashes })
 
   // upload thumbnail image
   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
@@ -170,6 +171,55 @@ export const prepareDirectory = async ({
 function not_directory(file) {
   return file.blob.type !== IPFS_DIRECTORY_MIMETYPE
 }
+
+async function uploadFilesToDirectoryNFTStorage(files) {
+  files = files.filter(not_directory)
+
+  // const form = new FormData()
+  let directory_content = []
+  files.forEach((file) => {
+
+    directory_content.push(new File(
+      [file.blob],
+      encodeURIComponent(file.path)
+    ))
+    // console.log(file.blob)
+  })
+  console.log(directory_content)
+  const cid = await storage.storeDirectory(directory_content)
+  console.log(cid)
+  const status = await storage.status(cid)
+  console.log(status)
+  // TODO: Remove this once generateDisplayUri option is gone
+  // get cover hash
+  let cover = null
+  const indexFile = files.find((f) => f.path === 'index.html')
+  if (indexFile) {
+    const indexBuffer = await indexFile.blob.arrayBuffer()
+    const coverImagePath = getCoverImagePathFromBuffer(indexBuffer)
+
+    if (coverImagePath) {
+      // const coverEntry = data.find((f) => f.Name === coverImagePath)
+      // if (coverEntry) {
+      //   cover = coverEntry.Hash
+      // }
+    }
+  }
+
+  // const rootDir = data.find((e) => e.Name === '')
+
+  // const directory = rootDir.Hash
+
+  // return { directory, cover }
+  return { directory: cid, cover }
+}
+
+
+
+
+
+
+
 
 async function uploadFilesToDirectory(files) {
   files = files.filter(not_directory)
