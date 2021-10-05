@@ -41,12 +41,7 @@ export const prepareFile100MB = async ({
   const cid = `ipfs://${hash}`
 
   // upload cover image
-  let displayUri = ''
-  if (generateDisplayUri) {
-    const coverInfo = await ipfs.add(cover.buffer)
-    const coverHash = coverInfo.path
-    displayUri = `ipfs://${coverHash}`
-  }
+  const displayUri = await uploadCoverImage({ generateDisplayUri })
 
   // upload thumbnail image
   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
@@ -68,6 +63,30 @@ export const prepareFile100MB = async ({
     thumbnailUri,
   })
 }
+const uploadCoverImage = async ({
+  generateDisplayUri,
+  hashes = undefined
+}) => {
+
+  // upload cover image
+  let displayUri = ''
+  if (generateDisplayUri) {
+    // const coverHash = await ipfs.add(new Blob([cover.buffer]))
+    // console.log(coverHash)
+    // displayUri = `ipfs://${coverHash.path}`
+    const coverHash = await storage.storeBlob(new Blob([cover.buffer]))
+    console.log(`Display (cover) Hash ${coverHash}`)
+    displayUri = `ipfs://${coverHash}`
+  }
+  else if (hashes !== undefined) {
+    if (hashes.cover) {
+      // TODO: Remove this once generateDisplayUri option is gone
+      displayUri = `ipfs://${hashes.cover}`
+    }
+  }
+  return displayUri
+
+}
 
 export const prepareFile = async ({
   name,
@@ -83,7 +102,7 @@ export const prepareFile = async ({
   const ipfs = create(infuraUrl)
 
   // upload main file
- // const ipfs = create(infuraUrl)
+  // const ipfs = create(infuraUrl)
 
   // const hash = await ipfs.add(new Blob([buffer]))
   const hash = await storage.storeBlob(new Blob([buffer]))
@@ -91,16 +110,7 @@ export const prepareFile = async ({
   // const cid = `ipfs://${hash.path}`
   const cid = `ipfs://${hash}`
 
-  // upload cover image
-  let displayUri = ''
-  if (generateDisplayUri) {
-    // const coverHash = await ipfs.add(new Blob([cover.buffer]))
-    // console.log(coverHash)
-    // displayUri = `ipfs://${coverHash.path}`
-    const coverHash = await storage.storeBlob(new Blob([cover.buffer]))
-    console.log(`Display (cover) Hash ${coverHash}`)
-    displayUri = `ipfs://${coverHash}`
-  }
+  const displayUri = await uploadCoverImage({ generateDisplayUri })
 
   // upload thumbnail image
   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
@@ -140,15 +150,7 @@ export const prepareDirectory = async ({
   // upload cover image
   const ipfs = create(infuraUrl)
 
-  let displayUri = ''
-  if (generateDisplayUri) {
-    const coverInfo = await ipfs.add(cover.buffer)
-    const coverHash = coverInfo.path
-    displayUri = `ipfs://${coverHash}`
-  } else if (hashes.cover) {
-    // TODO: Remove this once generateDisplayUri option is gone
-    displayUri = `ipfs://${hashes.cover}`
-  }
+  const displayUri = await uploadCoverImage({ generateDisplayUri, hashes })
 
   // upload thumbnail image
   let thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI
