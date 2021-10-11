@@ -200,7 +200,7 @@ async function uploadFilesToDirectory(files) {
   return { directory, cover }
 }
 
-async function uploadMetadataFile({
+export async function uploadMetadataFile({
   name,
   description,
   tags,
@@ -211,23 +211,24 @@ async function uploadMetadataFile({
   thumbnailUri = IPFS_DEFAULT_THUMBNAIL_URI,
 }) {
   const ipfs = create(infuraUrl)
+  const jsonMeta =
+    JSON.stringify({
+      name,
+      description,
+      tags: tags.replace(/\s/g, '').split(','),
+      symbol: 'OBJKT',
+      artifactUri: cid,
+      displayUri,
+      thumbnailUri,
+      creators: [address],
+      formats: [{ uri: cid, mimeType }],
+      decimals: 0,
+      isBooleanAmount: false,
+      shouldPreferSymbol: false,
+    })
 
+    console.log(jsonMeta);
   return await ipfs.add(
-    Buffer.from(
-      JSON.stringify({
-        name,
-        description,
-        tags: tags.replace(/\s/g, '').split(','),
-        symbol: 'OBJKT',
-        artifactUri: cid,
-        displayUri,
-        thumbnailUri,
-        creators: [address],
-        formats: [{ uri: cid, mimeType }],
-        decimals: 0,
-        isBooleanAmount: false,
-        shouldPreferSymbol: false,
-      })
-    )
+    Buffer.from(jsonMeta)
   )
 }
